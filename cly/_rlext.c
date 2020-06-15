@@ -10,6 +10,7 @@
 #include "Python.h"
 #include <readline/readline.h>
 
+
 static PyObject *
 force_redisplay(PyObject *self, PyObject *noarg)
 {
@@ -89,7 +90,11 @@ cursor(PyObject *self, PyObject *args)
         rl_point = rl_end;
     if (rl_point < 0)
         rl_point = 0;
+#if PY_MAJOR_VERSION >= 3
+    return PyLong_FromLong(rl_point);
+#else
     return PyInt_FromLong(rl_point);
+#endif
 }
 
 PyDoc_STRVAR(doc_cursor,
@@ -103,8 +108,35 @@ static struct PyMethodDef methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "_rlext",                   /* m_name */
+    "cly readline extension",   /* m_doc */
+    -1,                         /* m_size */
+    methods,                    /* m_methods */
+    NULL,                       /* m_reload */
+    NULL,                       /* m_traverse */
+    NULL,                       /* m_clear */
+    NULL,                       /* m_free */
+};
+#endif
+
 PyMODINIT_FUNC
+#if PY_MAJOR_VERSION >= 3
+PyInit__rlext(void)
+#else
 init_rlext(void)
+#endif
 {
-    Py_InitModule((char*)"_rlext", methods);
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+
+    if (module == NULL)
+        return NULL;
+
+    return module;
+#else
+    Py_InitModule((char *)"_rlext", methods);
+#endif
 }
