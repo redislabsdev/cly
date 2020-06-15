@@ -31,6 +31,7 @@ import re
 import sys
 import os
 import codecs
+from functools import reduce
 
 
 __all__ = """

@@ -1,3 +1,4 @@
+from __future__ import print_function
 try:
     from setuptools import setup, Extension
 except ImportError:
@@ -17,15 +18,15 @@ class optional_build_ext(build_ext):
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
-        except CCompilerError, x:
+        except CCompilerError as x:
             self._unavailable()
 
     def _unavailable(self):
-        print '*' * 78
-        print """
+        print('*' * 78)
+        print("""
 WARNING: Could not compile C extension, contextual help will not be available.
-"""
-        print '*' * 78
+""")
+        print('*' * 78)
 
 
 ext_modules = []

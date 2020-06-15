@@ -16,6 +16,7 @@ customisable completion key, interactive help and more.
 
 *Users can press ? at any time to view contextual help.*
 """
+from __future__ import print_function
 
 import os
 import sys
@@ -100,8 +101,7 @@ class DumbInput(InputDriver):
 
     @staticmethod
     def usable():
-        print >> sys.stderr, \
-            'WARNING: Most line editing features are unavailable.'
+        print('WARNING: Most line editing features are unavailable.', file=sys.stderr)
         return True
 
 
@@ -139,10 +139,9 @@ class ReadlineDriver(InputDriver):
     @staticmethod
     def usable():
         if readline:
-            print >> sys.stderr, \
-                'WARNING: neither pyreadline nor CLY\'s built-in readline ' \
+            print('WARNING: neither pyreadline nor CLY\'s built-in readline ' \
                 'extensions found,\n         contextual help is not ' \
-                'available.'
+                'available.', file=sys.stderr)
         return readline
 
     def _bind_help(self):
@@ -171,7 +170,7 @@ class ReadlineDriver(InputDriver):
             if not state:
                 try:
                     self._completion_candidates = list(result.candidates(text))
-                except Exception, e:
+                except Exception as e:
                     Interact.dump_traceback(e)
                     self._force_redisplay()
                     raise
@@ -190,7 +189,7 @@ class ReadlineDriver(InputDriver):
             command = readline.get_line_buffer()[:self.cursor]
             context = self.parser.parse(command)
             if context.remaining.strip():
-                print
+                print()
                 candidates = [help[1] for help in context.help()]
                 text = '%s^ invalid token (candidates are %s)' % \
                        (' ' * (context.cursor + len(self.prompt)),
@@ -199,11 +198,11 @@ class ReadlineDriver(InputDriver):
                 self._force_redisplay()
                 return
             help = context.help()
-            print
+            print()
             console.cprint('\n'.join(help.format()))
             self._force_redisplay()
             return 0
-        except Exception, e:
+        except Exception as e:
             Interact.dump_traceback(e)
             self._force_redisplay()
             return 0
@@ -317,10 +316,10 @@ class Interact(object):
                 try:
                     command = self.input_driver.input()
                 except KeyboardInterrupt:
-                    print
+                    print()
                     continue
                 except EOFError:
-                    print
+                    print()
                     return None
             finally:
                 self.input_driver.leave()
@@ -328,7 +327,7 @@ class Interact(object):
             try:
                 context = self.parser.parse(command)
                 context.execute()
-            except ParseError, e:
+            except ParseError as e:
                 self.print_error(context, e)
             return context
 
@@ -355,7 +354,7 @@ class Interact(object):
                     every(self)
                 if not self.once():
                     break
-            except Exception, e:
+            except Exception as e:
                 if exceptions(self, None, False, e):
                     raise
 
@@ -388,8 +387,8 @@ class Interact(object):
         from StringIO import StringIO
         out = StringIO()
         traceback.print_exc(file=out)
-        print >>sys.stderr, str(exception)
-        print >>sys.stderr, out.getvalue()
+        print(str(exception), file=sys.stderr)
+        print(out.getvalue(), file=sys.stderr)
 
     def _get_prompt(self):
         return self.input_driver.prompt

@@ -930,7 +930,7 @@ class Variable(Node):
         """
         try:
             value = self.parse(context, match)
-        except ValidationError, e:
+        except ValidationError as e:
             raise ValidationError(context, token=match.group(),
                                   exception=unicode(e))
         if not self.traversals or self.traversals > 1:
@@ -1101,7 +1101,7 @@ class XMLGrammar(Grammar):
         name = attributes.pop('name', None)
         try:
             node = cls(**attributes)
-        except Exception, e:
+        except Exception as e:
             e.args = ('Node construction of %s failed: %s' % (cls, e),)
             raise
 
