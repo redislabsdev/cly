@@ -26,7 +26,13 @@ Valid colour escape sequences are:
     :``^7``: Set white foreground.
 
 """
-
+from __future__ import division
+from builtins import str
+from builtins import bytes
+from builtins import map
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import re
 import sys
 import os
@@ -202,7 +208,7 @@ class _Codec(codecs.Codec):
     def __init__(self, *args, **kwargs):
         try:
             codecs.Codec.__init__(self, *args, **kwargs)
-        except AttributeError:
+        except (AttributeError, TypeError):
             pass
         self.reset()
 
@@ -212,10 +218,11 @@ class _Codec(codecs.Codec):
     }
 
     def decode(self, input, errors='strict'):
-        return _decode_re.sub(self._decode_match, input)
+        return _decode_re.sub(self._decode_match, str(input, encoding='ascii'))
 
     def encode(self, input, errors='strict'):
-        return _encode_re.sub(self._encode_match, input)
+        return bytes(_encode_re.sub(self._encode_match, input),
+                     encoding='ascii')
 
     def reset(self):
         self.bold = False
@@ -301,15 +308,19 @@ def register_codec():
     The formatting syntax can then be used like any other codec:
 
     >>> register_codec()
-    >>> '^Bbold^B'.decode('cly')
+    >>> str(b'^Bbold^B'.decode('cly'))
     '\\x1b[1mbold\\x1b[22m'
     >>> '\\x1b[1mbold\\x1b[22m'.encode('cly')
-    '^Bbold^B'
+    b'^Bbold^B'
     """
     def inner_register(encoding):
         if encoding != 'cly':
             return None
-        return (_encode, _decode, _CodecStreamReader, _CodecStreamWriter)
+        return codecs.CodecInfo(
+            _encode,
+            _decode,
+            _CodecStreamReader,
+            _CodecStreamWriter)
     return codecs.register(inner_register)
 
 
@@ -488,7 +499,7 @@ def cjustify(text, width=None):
     text = cwraptext(text, width)
     out = ''
     for line in text:
-        out += (' ' * ((width - clen(line)) / 2)) + line + '\n'
+        out += (' ' * (old_div((width - clen(line)), 2))) + line + '\n'
     return out.rstrip()
 
 
@@ -524,7 +535,7 @@ def print_table(header, table, sep=u' ', indent=u'', expand_to_fit=True,
 
     seplen = len(sep)
     # Normalise rows
-    rows = [map(unicode, r) for r in [list(header)] + list(table)]
+    rows = [list(map(str, r)) for r in [list(header)] + list(table)]
     columns = len(rows[0])
 
     # Scale size_hints percentages to terminal width
@@ -532,8 +543,8 @@ def print_table(header, table, sep=u' ', indent=u'', expand_to_fit=True,
         term_width = termwidth()
         if term_width == -1:
             term_width = max([sum(map(ctlen, r)) + len(r) for r in rows])
-            min_widths = reduce(lambda a, b: map(max, zip(a, b)),
-                                [map(lambda c: ctlen(c) + 1, r) for r in rows])
+            min_widths = reduce(lambda a, b: list(map(max, list(zip(a, b)))),
+                                [[ctlen(c) + 1 for c in r] for r in rows])
         else:
             term_width = term_width - (columns - 1) * seplen - ctlen(indent)
     if not isinstance(min_widths, dict):
@@ -543,8 +554,8 @@ def print_table(header, table, sep=u' ', indent=u'', expand_to_fit=True,
     avg_width = float(term_width) / columns
     # Use the mid-point between the maximum word width and the maximum length
     # of the column.
-    widths = [(max([ctlen(w) for cell in column for w in cell.split()])
-               + max(map(ctlen, column))) / 2 + seplen
+    widths = [old_div((max([ctlen(w) for cell in column for w in cell.split()])
+               + max(list(map(ctlen, column)))), 2) + seplen
               for column in zip(*rows)]
     #widths = [int(min(c, avg_width)) for c in widths]
     # Apply user-specified column widths.
@@ -568,7 +579,7 @@ def print_table(header, table, sep=u' ', indent=u'', expand_to_fit=True,
 
         wrapped = [cwraptext(c.replace('^R', format), widths[i])
                    for i, c in enumerate(row)]
-        maxrows = max([0] + map(len, wrapped))
+        maxrows = max([0] + list(map(len, wrapped)))
         for col in wrapped:
             col += [''] * (maxrows - len(col))
 

@@ -9,12 +9,17 @@
 
 """Classes for constructing CLY grammars."""
 
-
+from __future__ import print_function
+from builtins import zip
+from builtins import str, bytes
+from past.builtins import basestring
+from builtins import object
 import datetime
 import os
 import posixpath
 import re
 import warnings
+import codecs
 from itertools import chain
 from xml.dom import minidom
 from inspect import isclass, getargspec
@@ -109,9 +114,9 @@ class Node(object):
             being matched. This avoids a lot of boiler plate code.
 
             >>> a = Node(candidates=['one', 'two'])
-            >>> print list(a.candidates(None, ''))
+            >>> print(list(a.candidates(None, '')))
             ['one ', 'two ']
-            >>> print list(a.candidates(None, 'o'))
+            >>> print(list(a.candidates(None, 'o')))
             ['one ']
 
         :traversals:
@@ -229,7 +234,7 @@ class Node(object):
             self._children[node.name] = node
             self.__anonymous_children += 1
 
-        for k, v in options.iteritems():
+        for k, v in options.items():
             if isinstance(v, Node):
                 k = k.rstrip('_')
                 v.name = k
@@ -256,7 +261,7 @@ class Node(object):
               return k
             return [convert(el) for el in splitter.split(key)]
 
-        children = sorted(self._children.values(),
+        children = sorted(list(self._children.values()),
                           key=lambda i: (i.group, i.order, nat_tokenise(i.name)))
         for child in children:
             yield child
@@ -284,7 +289,7 @@ class Node(object):
         """Emulate dictionary delete.
 
         >>> node = Node(two=Node(), three=Node())
-        >>> list(node.walk())
+        >>> sorted(list(node.walk()), key=lambda x: x.path())
         [<Node:/>, <Node:/three>, <Node:/two>]
         >>> del node['two']
         >>> list(node.walk())
@@ -306,7 +311,7 @@ class Node(object):
         """Perform a recursive walk of the grammar tree.
 
         >>> tree = Node(two=Node(three=Node(), four=Node()))
-        >>> list(tree.walk())
+        >>> sorted(list(tree.walk()), key=lambda x: x.path())
         [<Node:/>, <Node:/two>, <Node:/two/four>, <Node:/two/three>]
         """
         if predicate is None:
@@ -316,7 +321,7 @@ class Node(object):
             if not predicate(root):
                 return
             yield root
-            for node in root._children.itervalues():
+            for node in root._children.values():
                 for subnode in _walk(node):
                     yield subnode
 
@@ -470,14 +475,14 @@ class Node(object):
         ...            two=Node(three=Node()))
         >>> top.find('/two/three')
         <Node:/top/two/three>
-        >>> top.find('/one/bar')
+        >>> top.find('/one/bar')    # doctest: +IGNORE_EXCEPTION_DETAIL
         Traceback (most recent call last):
         ...
         InvalidNodePath: /top/one/bar
         """
         if self.label == path:
             return self
-        components = filter(None, path.split('/'))
+        components = [_f for _f in path.split('/') if _f]
         if not components:
             return self
         for child in self:
@@ -511,7 +516,7 @@ class Node(object):
         :param node: Node to merge into this.
         """
         self.__anonymous_children += node.__anonymous_children
-        for key, child in node._children.iteritems():
+        for key, child in node._children.items():
             if key not in self:
                 self[key] = child
             else:
@@ -589,10 +594,10 @@ class Masquerade(Node):
     ...         shutdown = Node(Action(self.shutdown), name='shutdown')
     ...         return [shutdown]
     ...     def shutdown(self):
-    ...         print 'shutdown()'
+    ...         print('shutdown()')
     >>> privileged = Privileged()
     >>> parser = Parser(Grammar(privileged, one=Node()))
-    >>> parser.execute('shutdown')
+    >>> parser.execute('shutdown')  # doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
     ...
     InvalidToken: invalid token 'shutdown'
@@ -824,7 +829,7 @@ class Action(Node):
 
     >>> from cly.parser import Parser, Context
     >>> def write_text():
-    ...     print 'some text'
+    ...     print('some text')
     >>> grammar = Grammar(action=Action(callback=write_text))
     >>> parser = Parser(grammar)
     >>> context = Context(parser, 'foo bar')
@@ -932,7 +937,7 @@ class Variable(Node):
             value = self.parse(context, match)
         except ValidationError as e:
             raise ValidationError(context, token=match.group(),
-                                  exception=unicode(e))
+                                  exception=str(e))
         if not self.traversals or self.traversals > 1:
             context.vars.setdefault(self.var_name, []).append(value)
         else:
@@ -1066,7 +1071,7 @@ class XMLGrammar(Grammar):
         nodes.extend(extra_nodes or [])
         self.node_map = dict([(v.__name__.lower(), v) for v in nodes])
         self.node_map.update([(k, self.node_map[v])
-                              for k, v in self.NODE_ALIASES.items()])
+                              for k, v in list(self.NODE_ALIASES.items())])
 
         grammar = dom.firstChild
         if grammar.localName != 'grammar':
@@ -1151,7 +1156,7 @@ def lazy_attr_evaluator(attr, positional_args=None):
                     'Lazily evaluated XML attribute "%s" called with unknown '
                     'positional arguments. This is not supported.' % attr
                     )
-            locals.update(zip(positional_args[:len(args)], args))
+            locals.update(list(zip(positional_args[:len(args)], args)))
 
         if 'context' in locals:
             context = locals.pop('context')
@@ -1311,7 +1316,8 @@ class String(Variable):
     pattern = r"""(\w+)|"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'"""
 
     def parse(self, context, match):
-        return match.group(match.lastindex).decode('string_escape')
+        # TODO
+        return match.group(match.lastindex).decode('unicode_escape')
 
 
 class Base64(Variable):
@@ -1326,20 +1332,21 @@ class Base64(Variable):
     >>> parser.parse('Y29vbA==').vars['foo']
     'cool'
     >>> # Fails because there is not enough chars
-    >>> parser.parse('Y2x').vars.get('foo')
+    >>> parser.parse(u'Y2x').vars.get('foo')
     >>> # Fails because there are too many '=' pad characters
-    >>> parser.parse('Y2x5=').vars.get('foo')
+    >>> parser.parse(u'Y2x5=').vars.get('foo')
     >>> # Fails because there are too many '=' pad characters
-    >>> parser.parse('Y2x5==').vars.get('foo')
+    >>> parser.parse(u'Y2x5==').vars.get('foo')
     >>> # Fails because there are too many '=' pad characters
-    >>> parser.parse('Y2x5===').vars.get('foo')
+    >>> parser.parse(u'Y2x5===').vars.get('foo')
     >>> # Fails because there are trailing characters
-    >>> parser.parse('Y29vbA==abc').vars.get('foo')
+    >>> parser.parse(u'Y29vbA==abc').vars.get('foo')
     """
     pattern = r"""(?:([A-Za-z0-9+/]{2}==)|([A-Za-z0-9+/]{3}=)){1}|([A-Za-z0-9+/]{4})+(?:([A-Za-z0-9+/]{2}==)|([A-Za-z0-9+/]{3}=))?"""
 
     def parse(self, context, match):
-        return match.group().decode('base64_codec')
+        return str(codecs.decode(
+            bytes(match.group(), encoding='ascii'), 'base64_codec').decode())
 
 
 class URI(Variable):

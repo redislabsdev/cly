@@ -9,6 +9,7 @@
 """CLY exception hierarchy."""
 
 
+from __future__ import print_function
 import string
 
 
@@ -46,7 +47,7 @@ class ParseError(Error):
     where template variables are passed as arguments to the constructor.
 
     >>> from cly.parser import Context
-    >>> print ParseError(Context(None, 'foo bar'), "remaining=$remaining, time=$time", time=123)
+    >>> print(ParseError(Context(None, 'foo bar'), "remaining=$remaining, time=$time", time=123))
     remaining=foo bar, time=123
     """
     message = 'parse error'

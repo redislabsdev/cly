@@ -18,6 +18,11 @@ customisable completion key, interactive help and more.
 """
 from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import input
+from builtins import str
+from builtins import object
 import os
 import sys
 import types
@@ -97,7 +102,7 @@ class DumbInput(InputDriver):
     """The horror."""
 
     def input(self):
-        return raw_input(self.prompt)
+        return input(self.prompt)
 
     @staticmethod
     def usable():
@@ -128,7 +133,7 @@ class ReadlineDriver(InputDriver):
         self._bind_help()
 
     def input(self):
-        return raw_input(self.prompt)
+        return input(self.prompt)
 
     def leave(self):
         try:
@@ -384,7 +389,7 @@ class Interact(object):
     @classmethod
     def dump_traceback(cls, exception):
         import traceback
-        from StringIO import StringIO
+        from io import StringIO
         out = StringIO()
         traceback.print_exc(file=out)
         print(str(exception), file=sys.stderr)

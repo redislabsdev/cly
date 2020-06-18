@@ -30,7 +30,7 @@ WARNING: Could not compile C extension, contextual help will not be available.
 
 
 ext_modules = []
-install_requires = []
+install_requires = ['future==0.18.2']
 
 if 'win' in sys.platform:
     ext_modules = []
