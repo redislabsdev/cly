@@ -32,7 +32,7 @@ WARNING: Could not compile C extension, contextual help will not be available.
 ext_modules = []
 install_requires = ['future==0.18.2']
 
-if 'win' in sys.platform:
+if sys.platform.startswith('win'):
     ext_modules = []
     install_requires = ['pyreadline']
     if sys.version_info[:2] < (2, 5):
