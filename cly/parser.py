@@ -11,7 +11,9 @@
 Constructs for parsing user input with a :class:`~cly.builder.Grammar`.
 """
 
-
+from __future__ import print_function
+from past.builtins import basestring
+from builtins import object
 __all__ = ['HelpParser', 'Context', 'Parser']
 __docformat__ = 'restructuredtext en'
 
@@ -84,7 +86,7 @@ class HelpParser(object):
         ...     one=Node(help='1'),
         ...     two=Node(help=Help.pair('<two>', '2'), group=2))
         >>> help = HelpParser(context, grammar)
-        >>> print '\\n'.join(help.format())
+        >>> print('\\n'.join(help.format()))
           ^Bone  ^B 1
         <BLANKLINE>
           ^B<two>^B 2
@@ -190,7 +192,7 @@ class Context(object):
         remaining an exception will be thrown.
 
         >>> from cly.builder import Grammar, Node, Action
-        >>> def test(): print 'OK'
+        >>> def test(): print('OK')
         >>> parser = Parser(Grammar(one=Node()(Action(callback=test))))
         >>> context = parser.parse('one')
         >>> context.execute()
@@ -246,7 +248,7 @@ class Context(object):
         ...                 three=Node(help='3')), four=Node(help='4')))
         >>> context = parser.parse('one')
         >>> help = context.help()
-        >>> print '\\n'.join(help.format())
+        >>> print('\\n'.join(help.format()))
           ^Bthree^B 3
           ^Btwo  ^B 2
         """
@@ -266,7 +268,7 @@ class Context(object):
         >>> node = parser.find('/one')
         >>> for i in range(4):
         ...     context = parser.parse('one ' * i)
-        ...     print context.traversed(node), context.parsed # doctest: +NORMALIZE_WHITESPACE
+        ...     print('%s %s' % (context.traversed(node), context.parsed)) # doctest: +NORMALIZE_WHITESPACE
         0
         1 one 
         2 one one 

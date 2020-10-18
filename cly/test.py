@@ -6,9 +6,12 @@
 # you should have received as part of this distribution.
 #
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 import unittest
 import doctest
-from StringIO import StringIO
+from io import StringIO
 from cly.exceptions import InvalidToken
 from cly import Defaults, Node, XMLGrammar, Parser
 
@@ -22,7 +25,7 @@ class TestXMLGrammar(unittest.TestCase):
         self._output = (args, kwargs)
 
     def test_basic(self):
-        xml = StringIO("""<?xml version="1.0"?>
+        xml = StringIO(u"""<?xml version="1.0"?>
         <grammar>
             <node name='echo'>
                 <variable name='text'>
@@ -38,7 +41,7 @@ class TestXMLGrammar(unittest.TestCase):
         self.assertEqual(self._output, (('magic',), {}))
 
     def test_multiple_traversals(self):
-        xml = StringIO("""<?xml version="1.0"?>
+        xml = StringIO(u"""<?xml version="1.0"?>
         <grammar>
             <node name='echo'>
                 <variable name='text' traversals='0'>
@@ -55,7 +58,7 @@ class TestXMLGrammar(unittest.TestCase):
         self.assertEqual(self._output, ((['magic', 'monkey'],), {}))
 
     def test_group(self):
-        xml = StringIO("""<?xml version="1.0"?>
+        xml = StringIO(u"""<?xml version="1.0"?>
         <grammar>
             <node name='echo'>
                 <variable traversals='0' name='text'>
@@ -72,7 +75,7 @@ class TestXMLGrammar(unittest.TestCase):
         self.assertEqual(self._output, ((['magic', 'monkey'],), {}))
 
     def test_completion(self):
-        xml = StringIO("""<?xml version="1.0"?>
+        xml = StringIO(u"""<?xml version="1.0"?>
         <grammar>
             <node name="echo">
                 <variable name="text" candidates="['monkey', 'muppet']">
@@ -98,7 +101,7 @@ class TestXMLGrammar(unittest.TestCase):
             pattern = r'(?i)[abc]+'
 
 
-        xml = StringIO("""<?xml version="1.0"?>
+        xml = StringIO(u"""<?xml version="1.0"?>
         <grammar>
             <node name='echo'>
                 <abc name='text'>
@@ -120,7 +123,7 @@ class TestXMLGrammar(unittest.TestCase):
         class Lazy(object): pass
         lazy = Lazy()
 
-        xml = StringIO("""<?xml version="1.0"?>
+        xml = StringIO(u"""<?xml version="1.0"?>
         <grammar>
             <node name='echo'>
                 <variable name='text'>
@@ -167,7 +170,7 @@ class TestXMLGrammar(unittest.TestCase):
                     return int(value), {}
                 return value, {}
 
-        xml = StringIO("""<?xml version="1.0"?>
+        xml = StringIO(u"""<?xml version="1.0"?>
         <grammar>
             <test test="10" name="test">
             </test>
@@ -187,7 +190,7 @@ class TestXMLGrammar(unittest.TestCase):
             def attribute_aliases(cls):
                 return {'baz': 'waz'}
 
-        xml = StringIO("""<?xml version="1.0"?>
+        xml = StringIO(u"""<?xml version="1.0"?>
         <grammar>
             <test baz="10" foo="20" name="test">
             </test>
@@ -199,7 +202,7 @@ class TestXMLGrammar(unittest.TestCase):
         self.assertTrue(node.waz, '20')
 
     def test_set_cast(self):
-        xml = StringIO("""<?xml version="1.0"?>
+        xml = StringIO(u"""<?xml version="1.0"?>
         <grammar>
             <defaults baz="10" foo="20" waz="'waz'">
                 <node name="test"></node>
