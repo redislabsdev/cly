@@ -27,6 +27,8 @@ Valid colour escape sequences are:
 
 """
 from __future__ import division
+
+from io import IOBase
 from builtins import str
 from builtins import bytes
 from builtins import map
@@ -339,7 +341,7 @@ def cdecode(text):
 
 def cprint(*args):
     """Emulate the ``print`` builtin, with terminal shortcuts."""
-    if args and type(args[0]) is file:
+    if args and isinstance(args[0], IOBase):
         stream = args[0]
         args = args[1:]
     else:
