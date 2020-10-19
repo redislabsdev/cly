@@ -220,7 +220,13 @@ class _Codec(codecs.Codec):
     }
 
     def decode(self, input, errors='strict'):
-        return _decode_re.sub(self._decode_match, str(input, encoding='ascii'))
+        if isinstance(input, str):
+            input_str = input
+        elif isinstance(input, bytes):
+            input_str = str(input, encoding='ascii')
+        else:
+            raise TypeError('Received unsupported type to decode: {}'.format(type(input)))
+        return _decode_re.sub(self._decode_match, input_str)
 
     def encode(self, input, errors='strict'):
         return bytes(_encode_re.sub(self._encode_match, input),
