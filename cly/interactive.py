@@ -18,6 +18,11 @@ Press ``?`` at any location to contextual help.
 """
 from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import input
+from builtins import object
 import os
 import sys
 import readline
@@ -133,7 +138,7 @@ class Interact(object):
         while True:
             command = ''
             try:
-                command = raw_input(self.prompt)
+                command = input(self.prompt)
             except KeyboardInterrupt:
                 print()
                 continue
@@ -211,7 +216,7 @@ class Interact(object):
     @staticmethod
     def _dump_traceback(exception):
         import traceback
-        from StringIO import StringIO
+        from io import StringIO
         out = StringIO()
         traceback.print_exc(file=out)
         print(str(exception), file=sys.stderr)

@@ -9,6 +9,7 @@
 """CLY grammar and help parsers, and support classes."""
 
 
+from builtins import object
 __all__ = ['HelpParser', 'Context', 'Parser']
 __docformat__ = 'restructuredtext en'
 

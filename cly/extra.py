@@ -15,7 +15,7 @@ __docformat__ = 'restructuredtext en'
 
 def cull_candidates(candidates, text):
     """Cull candidates that do not start with ``text``."""
-    return filter(None, [c + ' ' for c in candidates if c.startswith(text)])
+    return [_f for _f in [c + ' ' for c in candidates if c.startswith(text)] if _f]
 
 
 def static_candidates(*candidates):
@@ -32,7 +32,7 @@ def static_candidates(*candidates):
     ['foo ', 'fuzz ']
     """
     def cull_candidates(context, text):
-        return filter(None, [c + ' ' for c in candidates if c.startswith(text)])
+        return [_f for _f in [c + ' ' for c in candidates if c.startswith(text)] if _f]
     return cull_candidates
 
 

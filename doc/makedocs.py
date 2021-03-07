@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
+from future import standard_library
+standard_library.install_aliases()
 import docutils.parsers.rst
-import StringIO
+import io
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import HtmlFormatter
@@ -36,7 +38,7 @@ def code_block( name, arguments, options, content, lineno,
       "for language '%s'." % language,
       docutils.nodes.literal_block(block_text, block_text), line=lineno )
     return [error]
-  io = StringIO.StringIO()
+  io = io.StringIO()
   html = highlight('\n'.join(content), lexer, formatter)
   raw = docutils.nodes.raw('',html, format = 'html')
   return [raw]

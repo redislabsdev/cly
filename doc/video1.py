@@ -2,10 +2,12 @@ from __future__ import print_function
 # To demonstrate how easy it is to create interactive shells with CLY, I'm
 # going to write a simple interface to BeautifulSoup.
 
+from future import standard_library
+standard_library.install_aliases()
 import sys
 import re
 from cly.all import *
-from urllib2 import urlopen
+from urllib.request import urlopen
 from BeautifulSoup import BeautifulSoup
 
 # I'll start with three basic commands:

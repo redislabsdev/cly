@@ -26,4 +26,6 @@ Kind of like the builtin "cmd" module on steroids.""",
                    'Environment :: Console',
                    'Topic :: Software Development :: Libraries'],
       ext_modules=[Extension('cly.rlext', ['cly/rlext.c'],
-                             libraries = ['readline', 'curses'])])
+                             libraries = ['readline', 'curses'])],
+      install_requires=['future==0.18.2'],
+  )

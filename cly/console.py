@@ -37,7 +37,12 @@ Valid formatting controls are:
     Set white foreground.
 
 """
+from __future__ import division
 
+from builtins import str
+from builtins import map
+from builtins import range
+from past.utils import old_div
 import re
 import sys
 import os
@@ -362,7 +367,7 @@ def cjustify(text, width=termwidth()):
     text = cwraptext(text, width)
     out = ''
     for line in text:
-        out += (' ' * ((width - clen(line)) / 2)) + line + '\n'
+        out += (' ' * (old_div((width - clen(line)), 2))) + line + '\n'
     return out.rstrip()
 
 
@@ -418,7 +423,7 @@ def print_table(header, table, sep=' ', indent='',
     rows, cols = len(table), len(table[0])
     colwidths = [0] * cols
     for i in range(0, cols):
-        colwidths[i] = max(map(lambda c: max([0] + map(ctlen, c[i].splitlines())), table))
+        colwidths[i] = max([max([0] + list(map(ctlen, c[i].splitlines()))) for c in table])
         colwidths[i] = max(colwidths[i], min_widths[i])
         if i < cols - 1:
             colwidths[i] += seplen
@@ -463,10 +468,10 @@ def print_table(header, table, sep=' ', indent='',
                           colwidths[i] - (i < cols - 1 and seplen or 0))
                 for i, col in enumerate(row)]
         # Pad column rows out to the maximum of all columns
-        maxrows = max([0] + map(len, xrow))
+        maxrows = max([0] + list(map(len, xrow)))
         for col in xrow:
             col += [''] * (maxrows - len(col))
-        realrows = max([0] + map(len, xrow))
+        realrows = max([0] + list(map(len, xrow)))
         # Emit
         for i in range(0, realrows):
             cwrite(sys.stdout, indent + fmt)

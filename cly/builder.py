@@ -10,6 +10,10 @@
 """Classes for constructing CLY grammars."""
 
 
+from builtins import map
+from builtins import str
+from past.builtins import basestring
+from builtins import object
 import re
 import os
 import posixpath
@@ -151,7 +155,7 @@ class Node(object):
             self._children[node.name] = node
             self.__anonymous_children += 1
 
-        for k, v in options.iteritems():
+        for k, v in options.items():
             if isinstance(v, Node):
                 if k.endswith('_'):
                     k = k[:-1]
@@ -169,7 +173,7 @@ class Node(object):
         >>> list(tree)
         [<Node:/three>, <Node:/two>]
         """
-        children = sorted(self._children.values(),
+        children = sorted(list(self._children.values()),
                           key=lambda i: (i.group, i.order, i.name))
         for child in children:
             yield child
@@ -230,7 +234,7 @@ class Node(object):
             if not predicate(root):
                 return
             yield root
-            for node in root._children.itervalues():
+            for node in root._children.values():
                 for subnode in walk(node):
                     yield subnode
 
@@ -364,7 +368,7 @@ class Node(object):
         ...
         InvalidNodePath: /top/one/bar
         """
-        components = filter(None, path.split('/'))
+        components = [_f for _f in path.split('/') if _f]
         if not components:
             return self
         for child in self:
@@ -621,7 +625,7 @@ class Variable(Node):
             value = self.parse(context, match)
         except ValidationError as e:
             raise ValidationError(context, token=match.group(),
-                                  exception=unicode(e))
+                                  exception=str(e))
         if not self.traversals or self.traversals > 1:
             context.vars.setdefault(self.var_name, []).append(value)
         else:
@@ -689,7 +693,7 @@ class Grammar(Node):
             ))
 
         node_types = dict([(v.__name__.lower(), v)
-                          for v in (globals().values() + extra_nodes)
+                          for v in (list(globals().values()) + extra_nodes)
                           if isclass(v) and issubclass(v, Node)])
 
         def parse(parent, xnode):
@@ -702,9 +706,9 @@ class Grammar(Node):
                     raise XMLParseError('Invalid node type "%s"' % name)
 
                 attributes = dict([(str(k), v) for k, v
-                                   in xnode.attributes.items()])
+                                   in list(xnode.attributes.items())])
 
-                for k, v in attributes.items():
+                for k, v in list(attributes.items()):
                     if k.startswith('eval:'):
                         attributes.pop(k)
                         k = k[5:]
