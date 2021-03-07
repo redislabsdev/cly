@@ -42,6 +42,8 @@ from __future__ import division
 from builtins import str
 from builtins import map
 from builtins import range
+from io import IOBase
+
 from past.utils import old_div
 import re
 import sys
@@ -233,7 +235,7 @@ If ``sys.stdout`` is not a TTY, colour codes will be stripped.
 def cprint(*args):
     """Emulate the ``print`` builtin, with terminal shortcuts."""
     stream = sys.stdout
-    if args and type(args[0]) is file:
+    if args and isinstance(args[0], IOBase):
         stream = args[0]
         args = args[1:]
     cwrite(stream, ' '.join(args) + '\n')
