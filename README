@@ -3,8 +3,6 @@ of like the builtin `cmd` module on steroids.
 
 It has the following features:
 
-  - An XML (honestly, it's better than you think) grammar format.
-
   - Tab completion of all commands.
 
   - Contextual help.

@@ -11,19 +11,30 @@
 This module provides a simple formatting syntax for basic terminal visual
 control sequences. The syntax is a carat ``^`` followed by a single character.
 
-Valid colour escape sequences are:
+Valid formatting controls are:
 
-    :``^N``: Reset all formatting.
-    :``^B``: Toggle bold.
-    :``^U``: Toggle underline.
-    :``^0``: Set black foreground.
-    :``^1``: Set red foreground.
-    :``^2``: Set green foreground.
-    :``^3``: Set brown foreground.
-    :``^4``: Set blue foreground.
-    :``^5``: Set magenta foreground.
-    :``^6``: Set cyan foreground.
-    :``^7``: Set white foreground.
+``^N``
+    Reset all formatting.
+``^B``
+    Toggle bold.
+``^U``
+    Toggle underline.
+``^0``
+    Set black foreground.
+``^1``
+    Set red foreground.
+``^2``
+    Set green foreground.
+``^3``
+    Set brown foreground.
+``^4``
+    Set blue foreground.
+``^5``
+    Set magenta foreground.
+``^6``
+    Set cyan foreground.
+``^7``
+    Set white foreground.
 
 """
 
@@ -33,171 +44,50 @@ import os
 import codecs
 
 
-__all__ = """
-cwrite getch cerror cfatal register_codec cinfo cjustify clen cprint csplice
-cwarning cwraptext print_table rjustify termheight termwidth wraptoterm cstrip
-cencode cdecode
-""".split()
-
 __docformat__ = 'restructuredtext en'
 
 
-_decode_re = re.compile(r'\^([N0-7BU])|[^^]+|\^')
-_encode_re = re.compile(r'\033(?:[^[]|$)|\033\[(.*?)m')
-_cstrip_re = re.compile(r'\^([N0-7BU])')
-_cwrap_re = re.compile(r'(\n)|(\s+)|((?:\^[N0-7BU]|\S)+\b[^\n^\w]*)|(.)')
-_terminal_type = None
-_terminal_colours = 0
+_decode_re = re.compile(r'''\^([N0-7BU])|.''')
+_encode_re = re.compile(r'''\033(?:[^[]|$)|\033\[(.*?)m''')
+_cprint_strip = re.compile(r'''\^([N0-7BU])''')
+_cwrap_re = re.compile(r'''(\n)|(\s+)|((?:\^[N0-7BU]|\S)+\b[^\n^\w]*)|(.)''')
+_colour_terminal = 0
 
 
-try:
-    _stdout_is_a_tty = sys.stdout.isatty()
-except:
-    _stdout_is_a_tty = False
-
-def mono_cwrite(io, text):
-    io.write(_cstrip_re.sub('', text))
-
-
-if 'darwin' != sys.platform and 'win' in sys.platform:
-    _terminal_type = 'win'
-    import msvcrt
-    def getch():
-        """Get a single character from the terminal."""
-        return msvcrt.getch()
-
-    # Appropriated from
-    #   http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/496901
-    STD_INPUT_HANDLE = -10
-    STD_OUTPUT_HANDLE= -11
-    STD_ERROR_HANDLE = -12
-
-    FOREGROUND_BLUE = 0x01 # text color contains blue.
-    FOREGROUND_GREEN= 0x02 # text color contains green.
-    FOREGROUND_RED  = 0x04 # text color contains red.
-    FOREGROUND_WHITE = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED
-    FOREGROUND_INTENSITY = 0x08 # text color is intensified.
-    BACKGROUND_BLUE = 0x10 # background color contains blue.
-    BACKGROUND_GREEN= 0x20 # background color contains green.
-    BACKGROUND_RED  = 0x40 # background color contains red.
-    BACKGROUND_INTENSITY = 0x80 # background color is intensified.
-    BACKGROUND_WHITE = BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED
-
-    try:
-        import ctypes
-
-        _stdout_handle = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
-        _stderr_handle = ctypes.windll.kernel32.GetStdHandle(STD_ERROR_HANDLE)
-
-        def _set_windows_colour(color, fd=None):
-            """(color) -> BOOL
-
-            Example: set_color(FOREGROUND_GREEN | FOREGROUND_INTENSITY)
-            """
-            if not fd or fd is sys.stdout:
-                handle = _stdout_handle
-            elif fd is sys.stderr:
-                handle = _stderr_handle
-            else:
-                return False
-            bool = ctypes.windll.kernel32.SetConsoleTextAttribute(handle, color)
-            return bool
-
-
-        def cwrite(io, text):
-            colour_map = {
-                '0': 0,
-                '1': FOREGROUND_RED,
-                '2': FOREGROUND_GREEN,
-                '3': FOREGROUND_RED | FOREGROUND_GREEN,
-                '4': FOREGROUND_BLUE,
-                '5': FOREGROUND_RED | FOREGROUND_BLUE,
-                '6': FOREGROUND_BLUE | FOREGROUND_GREEN,
-                '7': FOREGROUND_WHITE,
-                }
-
-            for match in _decode_re.finditer(text):
-                code = match.group(1)
-                if not code:
-                    io.write(match.group(0))
-                elif code == 'N':
-                    cwrite.state = FOREGROUND_WHITE
-                    _set_windows_colour(cwrite.state, io)
-                elif code == 'U':
-                    pass
-                elif code == 'B':
-                    cwrite.state ^= FOREGROUND_INTENSITY
-                    _set_windows_colour(cwrite.state, io)
-                elif code >= '0' and code <= '7':
-                    cwrite.state &= ~FOREGROUND_WHITE
-                    cwrite.state |= colour_map[code]
-                    _set_windows_colour(cwrite.state, io)
-                else:
-                    raise NotImplementedError('Unsupported colour code %s' %
-                        match.group(0))
-
-        cwrite.state = FOREGROUND_WHITE
-    except ImportError:
-        def _set_windows_colour(colour, fd=None):
-            return False
-
-elif _stdout_is_a_tty:
-    _terminal_type = 'ansi'
+if sys.stdout.isatty():
     try:
         import curses
-        import signal
-
         curses.setupterm()
-        _terminal_colours = curses.tigetnum('colors')
-
-        # Reconfigure curses on window resize
-        def sigwinch_handler(n, frame):
-            curses.setupterm()
-
-        signal.signal(signal.SIGWINCH, sigwinch_handler)
+        if curses.tigetnum('colors') >= 0:
+            _colour_terminal = 1
     except:
-        _terminal_colours = 0
+        pass
 
-    def getch():
-        """Get a single character from the terminal."""
-        import tty
-        import termios
+    try:
+        import msvcrt
+        def getch():
+            """Get a single character from the terminal."""
+            return msvcrt.getch()
+    except ImportError:
+        def getch():
+            """Get a single character from the terminal."""
+            import tty
+            import termios
 
-        fd = sys.stdin.fileno()
-        try:
-            old_settings = termios.tcgetattr(fd)
-        except termios.error:
-            return os.read(fd, 1)
-        try:
-            tty.setraw(fd)
-            ch = os.read(fd, 1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
-
-
-    def cwrite(io, text):
-        io.write(_decode(text)[0])
-else:
-    _terminal_type = 'dumb'
-
-    def getch():
-        return sys.stdin.read(1)
+            fd = sys.stdin.fileno()
+            try:
+                old_settings = termios.tcgetattr(fd)
+            except termios.error:
+                return os.read(fd, 1)
+            try:
+                tty.setraw(fd)
+                ch = os.read(fd, 1)
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            return ch
 
 
-    cwrite = mono_cwrite
-
-
-cwrite.__doc__ = \
-    """Print using simple colour escape codes.
-
-    Colour is not automatically reset at the end of output.
-
-    If ``sys.stdout`` is not a TTY, colour codes will be stripped.
-    """
-
-
-class _Codec(codecs.Codec):
+class Codec(codecs.Codec):
     def __init__(self, *args, **kwargs):
         try:
             codecs.Codec.__init__(self, *args, **kwargs)
@@ -209,23 +99,6 @@ class _Codec(codecs.Codec):
         0: '^N', 1: '^B', 4: '^U', 22: '^B', 24: '^U', 30: '^0', 31: '^1',
         32: '^2', 33: '^3', 34: '^4', 35: '^5', 36: '^6', 37: '^7',
     }
-
-    def decode(self, input, errors='strict'):
-        return _decode_re.sub(self._decode_match, input)
-
-    def encode(self, input, errors='strict'):
-        return _encode_re.sub(self._encode_match, input)
-
-    def reset(self):
-        self.bold = False
-        self.underline = False
-
-    # Internal methods
-    def _encode_match(self, match):
-        c = match.group(1)
-        if c:
-            return self._encode_mapping[int(c)]
-        return match.group(0)
 
     def _decode_match(self, match):
         c = match.group(1)
@@ -251,10 +124,26 @@ class _Codec(codecs.Codec):
                 return match.group(0)
         return match.group(0)
 
+    def decode(self, input, errors='strict'):
+        return _decode_re.sub(self._decode_match, input)
 
-class _CodecStreamWriter(_Codec, codecs.StreamWriter):
+    def _encode_match(self, match):
+        c = match.group(1)
+        if c:
+            return self._encode_mapping[int(c)]
+        return match.group(0)
+
+    def encode(self, input, errors='strict'):
+        return _encode_re.sub(self._encode_match, input)
+
+    def reset(self):
+        self.bold = False
+        self.underline = False
+
+
+class CodecStreamWriter(Codec, codecs.StreamWriter):
     def __init__(self, stream, errors='strict'):
-        _Codec.__init__(self)
+        Codec.__init__(self)
         codecs.StreamWriter.__init__(self, stream, errors)
         self.errors = errors
 
@@ -267,9 +156,9 @@ class _CodecStreamWriter(_Codec, codecs.StreamWriter):
             self.write('\n')
 
 
-class _CodecStreamReader(_Codec, codecs.StreamReader):
+class CodecStreamReader(Codec, codecs.StreamReader):
     def __init__(self, stream, errors='strict'):
-        _Codec.__init__(self)
+        Codec.__init__(self)
         codecs.StreamReader.__init__(self, stream, errors)
 
     def read(self, size=-1, chars=-1):
@@ -286,63 +175,73 @@ class _CodecStreamReader(_Codec, codecs.StreamReader):
         self.reset()
 
 
-def _decode(input, errors='strict'):
-    return (_Codec(errors=errors).decode(input), len(input))
+def decode(input, errors='strict'):
+    return (Codec(errors=errors).decode(input), len(input))
 
 
-def _encode(input, errors='strict'):
-    return (_Codec(errors=errors).encode(input), len(input))
+def encode(input, errors='strict'):
+    return (Codec(errors=errors).encode(input), len(input))
 
 
 def register_codec():
-    """Register the 'cly' codec with Python.
+    """Register the 'console' codec with Python.
 
     The formatting syntax can then be used like any other codec:
 
     >>> register_codec()
-    >>> '^Bbold^B'.decode('cly')
+    >>> '^Bbold^B'.decode('console')
     '\\x1b[1mbold\\x1b[22m'
-    >>> '\\x1b[1mbold\\x1b[22m'.encode('cly')
+    >>> '\\x1b[1mbold\\x1b[22m'.encode('console')
     '^Bbold^B'
     """
     def inner_register(encoding):
-        if encoding != 'cly':
+        if encoding != 'console':
             return None
-        return (_encode, _decode, _CodecStreamReader, _CodecStreamWriter)
+        return (encode, decode, CodecStreamReader, CodecStreamWriter)
     return codecs.register(inner_register)
 
 
-def cencode(text):
-    """Encode to CLY colour-encoded text."""
-    return _encode(text)[0]
+def colour_cwrite(io, text):
+    """Decode text to ANSI escape sequences and write to the io object."""
+    io.write(decode(text)[0])
 
 
-def cdecode(text):
-    """Decode CLY colour-encoded text.
+def mono_cwrite(io, text):
+    """Strip all colour encoding and write to io."""
+    io.write(_cprint_strip.sub('', text))
 
-    Use this to convert '^Bfoo^N' to the ANSI equivalent.
-    """
-    return _decode(text)[0]
+if sys.stdout.isatty() and _colour_terminal:
+    cwrite = colour_cwrite
+else:
+    cwrite = mono_cwrite
+
+cwrite.__doc__ ="""
+Print using colour escape codes similar to the Quake engine. That is,
+^0-7 correspond to colours, ^B toggles bold, ^U toggles underline and
+^N is reset to normal text. Colour is not automatically reset at the
+end of output.
+
+If ``sys.stdout`` is not a TTY, colour codes will be stripped.
+"""
 
 
 def cprint(*args):
     """Emulate the ``print`` builtin, with terminal shortcuts."""
+    stream = sys.stdout
     if args and type(args[0]) is file:
         stream = args[0]
         args = args[1:]
-    else:
-        stream = sys.stdout
-    cwrite(stream, ' '.join(map(str, args)) + '\n')
+    cwrite(stream, ' '.join(args) + '\n')
 
 
-def cstrip(text):
-    """Strip colour codes from text."""
-    return _cstrip_re.sub('', text)
+def cprintstrip(*args):
+    """As with cprint, but strip colour codes."""
+    return _cprint_strip.sub('', ' '.join(map(str, args)))
 
 
 def clen(arg):
     """Return the length of arg after colour codes are stripped."""
-    return len(cstrip(arg))
+    return len(cprintstrip(arg))
 
 
 def cerror(*args):
@@ -367,31 +266,19 @@ def cinfo(*args):
 
 
 def termwidth():
-    """Guess the current terminal width.
-
-    Returns -1 if the terminal width can not be determined.
-    """
-    if not _stdout_is_a_tty:
-        return -1
+    """Guess the current terminal width."""
     try:
-        import curses
         return curses.tigetnum('cols')
     except:
-        return int(os.environ.get('COLUMNS', -1))
+        return int(os.environ.get('COLUMNS', 80))
 
 
 def termheight():
-    """Guess the current terminal height.
-
-    Returns -1 if the terminal height can not be determined.
-    """
-    if not _stdout_is_a_tty:
-        return -1
+    """Guess the current terminal height."""
     try:
-        import curses
         return curses.tigetnum('lines')
     except:
-        return int(os.environ.get('LINES', -1))
+        return int(os.environ.get('LINES', 25))
 
 
 def csplice(text, start=0, end=-1):
@@ -424,12 +311,8 @@ def csplice(text, start=0, end=-1):
     return out
 
 
-def cwraptext(rtext, width=None, subsequent_indent=''):
-    """Wrap multi-line text to width (defaults to :func:`termwidth`)"""
-    if width is None:
-        width = termwidth()
-        if width == -1:
-            return [rtext]
+def cwraptext(rtext, width=termwidth(), subsequent_indent=''):
+    """Wrap multi-line text to width (defaults to termwidth())"""
     out = []
     for text in rtext.splitlines():
         tokens = [t.group(0) for t in _cwrap_re.finditer(text)] + [' ' * width]
@@ -465,12 +348,8 @@ def wraptoterm(text, **kwargs):
     return '\n'.join(cwraptext(text, **kwargs))
 
 
-def rjustify(text, width=None):
+def rjustify(text, width=termwidth()):
     """Right justify the given text."""
-    if width is None:
-        width = termwidth()
-        if width == -1:
-            return text
     text = cwraptext(text, width)
     out = ''
     for line in text:
@@ -478,12 +357,8 @@ def rjustify(text, width=None):
     return out.rstrip()
 
 
-def cjustify(text, width=None):
+def cjustify(text, width=termwidth()):
     """Centre the given text."""
-    if width is None:
-        width = termwidth()
-        if width == -1:
-            return text
     text = cwraptext(text, width)
     out = ''
     for line in text:
@@ -491,96 +366,117 @@ def cjustify(text, width=None):
     return out.rstrip()
 
 
-def print_table(header, table, sep=u' ', indent=u'', expand_to_fit=True,
-                header_format='^B^U', row_format=('^6', '^B^6'),
-                min_widths=None, term_width=None):
+def print_table(header, table, sep=' ', indent='',
+                auto_format=('^B^U', '^6', '^B^6'), expand_to_fit=True, min_widths=None):
     """Print a list of lists as a table, so that columns line up nicely.
 
-    :param header: List of column headings. Will be printed as the first row.
-    :param table: List of lists for the table body.
-    :param sep: The column separator.
-    :param indent: Table indentation as a string.
-    :param header_format: Formatting to use for header.
-    :param row_format: A tuple specifying cycling formatting colours to use for
-                       each row.
-    :param expand_to_fit: If a boolean, signifies whether print_table should
-                          expand the table to the width of the terminal or
-                          compact it as much as possible. If an integer,
-                          specifies the width to expand to.
-    :param min_widths: Columns will be guaranteed to be at least the width of
-                       each element in this list. May also be a dictionary of
-                       column indices to widths.
-    :param term_width: Override terminal width detection.
+    ``header``: list of column headings
+        Will be printed as the first row.
 
-    :returns: List of strings, one per line.
+    ``table``: list of rows
+        Data to print.
 
-    Note: In addition to the normal formatting codes supported by :func:`cprint`,
-    :func:`print_table` supports the ``^R`` formatting code, which corresponds
-    to the colour formatting of the current table row.
-    """
+    ``sep=' '``: string
+        The column separator.
+
+    ``indent=''``: string
+        Table indentation as a string.
+
+    ``auto_format=('^B^U', '^6', '^B^2')``: tuple
+        A tuple specifying the formatting colours to use for each row. The
+        first element is the header colour, subsequent elements are for
+        alternating rows.
+
+    ``expand_to_fit=True``: boolean or integer
+        If a boolean, signifies whether print_table should expand the table to
+        the width of the terminal or compact it as much as possible. If an
+        integer, specifies the width to expand to.
+
+    ``min_widths``: list of minimum column widths
+        Columns will be guaranteed to be at least the width of each element
+        in the list.
+
+    Note: ``print_table`` supports the ``^R`` formatting code, in addition to
+    those supported by cprint, which corresponds to the colour formatting of
+    the current table row."""
     def ctlen(s):
         return clen(s.replace('^R', ''))
 
     seplen = len(sep)
-    # Normalise rows
-    rows = [map(unicode, r) for r in [list(header)] + list(table)]
-    columns = len(rows[0])
+    # Find column scale factor
+    if header:
+        table.insert(0, header)
 
-    # Scale size_hints percentages to terminal width
-    if term_width is None:
-        term_width = termwidth()
-        if term_width == -1:
-            term_width = max([sum(map(ctlen, r)) + len(r) for r in rows])
-            min_widths = reduce(lambda a, b: map(max, zip(a, b)),
-                                [map(lambda c: ctlen(c) + 1, r) for r in rows])
+    # Stringify entire table
+    table = [[str(c) for c in r] for r in table]
+
+    # Make sure min_widths is usable
+    min_widths = min_widths or []
+    for i in range(len(min_widths),len(table[0])):
+        min_widths.append(0)
+
+    rows, cols = len(table), len(table[0])
+    colwidths = [0] * cols
+    for i in range(0, cols):
+        colwidths[i] = max(map(lambda c: max([0] + map(ctlen, c[i].splitlines())), table))
+        colwidths[i] = max(colwidths[i], min_widths[i])
+        if i < cols - 1:
+            colwidths[i] += seplen
+
+    # Scale columns if total width is less than the terminal width, or user
+    # requested
+    if expand_to_fit in (None, True, False):
+        max_width = termwidth() - len(indent)
+    else:
+        max_width = expand_to_fit
+        expand_to_fit = True
+
+    # Make sure min_widths is sensible
+    if sum(min_widths) > max_width:
+        raise Exception, 'Table exceeds maximum width'
+
+    # Scale columns out to max_width
+    if expand_to_fit is True or max_width < sum(colwidths):
+        scale = float(max_width - 1 - sum(min_widths)) / float(sum(colwidths) - sum(min_widths))
+        colwidths = [max(int(float(colwidths[x]) * scale), min_widths[x]) for x in range(0, len(colwidths))]
+        mincol = min(colwidths)
+        # Pad smallest column out so total width is size of max_width
+        colwidths[colwidths.index(mincol)] += max_width - sum(colwidths)
+
+    auto_format = list(auto_format)
+
+    rowalt = -1
+
+    if not header:
+        auto_format = auto_format[1:]
+        rowalt = 0
+
+    for row in table:
+        fmt = ''
+        if rowalt == -1:
+            fmt = auto_format[0]
+            auto_format.pop(0)
         else:
-            term_width = term_width - (columns - 1) * seplen - ctlen(indent)
-    if not isinstance(min_widths, dict):
-        min_widths = dict(enumerate(min_widths or []))
-
-    # Column widths
-    avg_width = float(term_width) / columns
-    # Use the mid-point between the maximum word width and the maximum length
-    # of the column.
-    widths = [(max([ctlen(w) for cell in column for w in cell.split()])
-               + max(map(ctlen, column))) / 2 + seplen
-              for column in zip(*rows)]
-    #widths = [int(min(c, avg_width)) for c in widths]
-    # Apply user-specified column widths.
-    widths = [max(c, min_widths.get(i, 1)) for i, c in enumerate(widths)]
-    width = sum(widths)
-
-    # Scale columns to fit
-    if width > term_width or expand_to_fit:
-        scale = float(term_width - sum(min_widths.values())) / width
-        widths = [max(int(w * scale), min_widths.get(i, 1))
-                  for i, w in enumerate(widths)]
-
-    row_alt = -1
-    for row in rows:
-        # Cycle through row formats
-        if row_alt == -1:
-            format = header_format
-        else:
-            format = row_format[row_alt % len(row_format)]
-        row_alt += 1
-
-        wrapped = [cwraptext(c.replace('^R', format), widths[i])
-                   for i, c in enumerate(row)]
-        maxrows = max([0] + map(len, wrapped))
-        for col in wrapped:
+            fmt = auto_format[rowalt % len(auto_format)]
+        # Perform wrapping
+        xrow = [cwraptext(col.replace('^R', fmt),
+                          colwidths[i] - (i < cols - 1 and seplen or 0))
+                for i, col in enumerate(row)]
+        # Pad column rows out to the maximum of all columns
+        maxrows = max([0] + map(len, xrow))
+        for col in xrow:
             col += [''] * (maxrows - len(col))
-
-        prefix = indent + format
-        for y in range(len(wrapped[0])):
-            cwrite(sys.stdout, prefix)
-            for x, cell in enumerate(wrapped):
-                cwrite(sys.stdout, cell[y].ljust(widths[x]))
-                if x < columns - 1:
-                    cwrite(sys.stdout, ' ')
-                else:
-                    cwrite(sys.stdout, '\n')
-            cwrite(sys.stdout, '^N')
+        realrows = max([0] + map(len, xrow))
+        # Emit
+        for i in range(0, realrows):
+            cwrite(sys.stdout, indent + fmt)
+            for j, col in enumerate(xrow):
+                slen = j < cols - 1 and seplen or 0
+                cwrite(sys.stdout, col[i] + ' ' * (colwidths[j] - ctlen(col[i]) - slen))
+                if slen:
+                    cwrite(sys.stdout, sep)
+            cwrite(sys.stdout, '^N\n')
+        rowalt += 1
 
 
 if __name__ == '__main__':

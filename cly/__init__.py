@@ -7,41 +7,27 @@
 #
 
 """CLY is a Python module for simplifying the creation of interactive shells.
-Kind of like the builtin `cmd <http://docs.python.org/lib/module-cmd.html>`_
-module on steroids.
+Kind of like the builtin ``cmd`` module on steroids.
 
 It has the following features:
 
-  - Automatic tab completion of all commands::
+  - Tab completion of all commands.
 
-      cly> s<TAB><TAB>
-      show status
+  - Contextual help.
 
-  - Contextual help::
+  - Extensible grammar - you can define your own commands with full dynamic
+    completion, contextual help, and so on.
 
-      cly> <?>
-      show    Show information.
-      status  Display status summary.
-
-      login   Authenticate.
-
-      quit    Quit.
-
-  - Extensible grammar - define your own commands with full dynamic completion,
-    contextual help, and so on.
-
-  - :class:`XML grammar <cly.builder.XMLGrammar>` for building clean MVC style command line interfaces.
-
-  - Simple. Grammars are constructed from objects using a simple *functional*
-    style.
-
-  - Multiple grammars can be merged both statically and dynamically.
+  - Simple. Grammars are constructed from objects using a convenient
+    ''function-call'' syntax.
 
   - Flexible command grouping and ordering.
 
   - Grammar parser, including completion and help enumeration, can be used
     independently of the readline-based shell. This allows CLY's parser to
     be used in other environments (think "web-based shell" ;))
+
+  - Lots of other cool stuff.
 """
 
 
@@ -49,7 +35,7 @@ __docformat__ = 'restructuredtext en'
 __author__ = 'Alec Thomas <alec@swapoff.org>'
 try:
     __version__ = __import__('pkg_resources').get_distribution('cly').version
-except Exception:
+except ImportError:
     pass
 
 

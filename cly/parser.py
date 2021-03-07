@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Alec Thomas <alec@swapoff.org>
+# Copyright (C) 2006-2007 Alec Thomas <alec@swapoff.org>
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 #
 
-"""CLY parser classes.
-
-Constructs for parsing user input with a :class:`~cly.builder.Grammar`.
-"""
+"""CLY grammar and help parsers, and support classes."""
 
 
 __all__ = ['HelpParser', 'Context', 'Parser']
@@ -29,18 +26,8 @@ class HelpParser(object):
         self.help = []
         self.node = node
 
-        def parse_help(node):
-            help = node.help(context)
-            if isinstance(help, basestring):
-                if node.name == node.pattern:
-                    return [(node.name, help)]
-                else:
-                    return [('<%s>' % node.name, help)]
-            else:
-                return help
-
         def add_help(node):
-            node_help = sorted(parse_help(node))
+            node_help = sorted(node.help(context))
             for help in node_help:
                 self.help.append((node.group, node.order, help[0], help[1]))
 
@@ -51,99 +38,60 @@ class HelpParser(object):
         self.help.sort()
 
     def __iter__(self):
-        """Iterate over each (order, key, help) help tuple.
+        """Iterate over each (key, help) help pair.
 
         >>> from cly.builder import Grammar, Node, Help
         >>> context = Context(None, None)
-        >>> class Test(Node):
-        ...   def help(self, context):
-        ...     return 'HELP!'
-        >>> help = HelpParser(context, Grammar(
-        ...     one=Node(help='1'),
-        ...     two=Node(help=Help.pair('<two>', '2'), group=2),
-        ...     three=Test(help='HELP!'),
-        ...     ))
+        >>> help = HelpParser(context, Grammar(one=Node('1'),
+        ...     two=Node(Help.pair('<two>', '2'), group=2)))
         >>> list(help)
-        [(0, 'one', '1'), (0, 'three', 'HELP!'), (2, '<two>', '2')]
+        [(0, 'one', '1'), (2, '<two>', '2')]
         """
 
         for help in self.help:
             yield (help[0],) + help[2:]
 
-    def format(self):
+    def format(self, out):
         """Format help into a human readable form.
-
-        Output is formatted for use with ``cly.console``.
-
-        Returns a list of lines of text.
 
         >>> from cly.builder import Grammar, Node, Help
         >>> import sys
         >>> context = Context(None, None)
-        >>> grammar = Grammar(
-        ...     one=Node(help='1'),
-        ...     two=Node(help=Help.pair('<two>', '2'), group=2))
-        >>> help = HelpParser(context, grammar)
-        >>> print '\\n'.join(help.format())
-          ^Bone  ^B 1
+        >>> help = HelpParser(context, Grammar(one=Node('1'),
+        ...     two=Node(Help.pair('<two>', '2'), group=2)))
+        >>> help.format(sys.stdout)
+          one   1
         <BLANKLINE>
-          ^B<two>^B 2
+          <two> 2
         """
+        import cly.console as console
+
         if not self.help:
-            return []
+            return
         last_group = None
         max_len = max([len(h[2]) for h in self.help])
-        out = []
+        if out.isatty():
+            write = console.colour_cwrite
+        else:
+            write = console.mono_cwrite
         for group, order, command, help in self.help:
             if last_group is not None and last_group != group:
-                out.append('')
+                out.write('\n')
             last_group = group
-            out.append('  ^B%-*s^B %s' % (max_len, command, help))
-        return out
+            write(out, '  ^B%-*s^B %s\n' % (max_len, command, help))
 
 
 class Context(object):
-    """Represents the parsing context for a single command.
+    """Represents the parsing context of a single command.
 
-    A `Context` is created automatically when input is parsed. It contains all
-    the information needed to maintain state during the parse, including the
-    current cursor position in the input stream, the current node in the
-    grammar, variables collected and a history of nodes traversed.
-
-    Basic usage is::
-
-      parser = Parser(grammar)
-      context = parser.parse('some input text')
-      print context.vars
-
-    If the input is invalid the context will have consumed as much input as
-    possible. The attributes ``parsed`` and ``remaining`` contain how much text has
-    been consumed and remains, respectively.
-
-    Useful attributes:
-
-    .. attribute:: parser
-
-        :class:`Parser` this `Context` is attached to.
-
-    .. attribute:: command
-
-        Command being parsed.
-
-    .. attribute:: cursor
-
-        Position of :class:`Parser` cursor.
-
-    .. attribute:: vars
-
-        :class:`~cly.builder.Variable`\ s collected during the parse.
-
+    The context contains all the information the parser needs to maintain
+    state while parsing the input command.
     """
-    def __init__(self, parser, command, data=None):
+    def __init__(self, parser, command, user_context=None):
         self.parser = parser
         self.command = command
         self.cursor = 0
-        self.data = data
+        self.user_context = user_context
         self.vars = {}
         self._traversed = {}
         self.trail = []
@@ -161,7 +109,6 @@ class Context(object):
 
     def _get_parsed(self):
         """Return command text that has been successfully parsed.
-
         >>> context = Context(None, 'one two')
         >>> context.advance(4)
         >>> context.parsed
@@ -174,7 +121,7 @@ class Context(object):
         """Return the last node parsed.
 
         >>> from cly.builder import Grammar, Node
-        >>> parser = Parser(Grammar(one=Node(two=Node())))
+        >>> parser = Parser(Grammar(one=Node('1', two=Node('2'))))
         >>> context = parser.parse('one two three')
         >>> context.last_node
         <Node:/one/two>
@@ -191,7 +138,7 @@ class Context(object):
 
         >>> from cly.builder import Grammar, Node, Action
         >>> def test(): print 'OK'
-        >>> parser = Parser(Grammar(one=Node()(Action(callback=test))))
+        >>> parser = Parser(Grammar(one=Node('1')(Action('', test))))
         >>> context = parser.parse('one')
         >>> context.execute()
         OK
@@ -217,13 +164,12 @@ class Context(object):
         """Return potential candidates from children of last successfully
         parsed node.
 
-        Arguments:
-            :text: If provided, return candidates after ``text``, otherwise the
-                   remaining unparsed text in the current command will be used.
+        If text is not provided, the remaining unparsed text in the current
+        command will be used.
 
         >>> from cly.builder import Grammar, Node
-        >>> parser = Parser(Grammar(one=Node()(two=Node(),
-        ...                 three=Node()), four=Node()))
+        >>> parser = Parser(Grammar(one=Node('1')(two=Node('2'),
+        ...                 three=Node('3')), four=Node('4')))
         >>> context = parser.parse('one')
         >>> list(context.candidates())
         ['three ', 'two ']
@@ -242,13 +188,13 @@ class Context(object):
 
         >>> import sys
         >>> from cly.builder import Grammar, Node
-        >>> parser = Parser(Grammar(one=Node(help='4', two=Node(help='2'),
-        ...                 three=Node(help='3')), four=Node(help='4')))
+        >>> parser = Parser(Grammar(one=Node('1')(two=Node('2'),
+        ...                 three=Node('3')), four=Node('4')))
         >>> context = parser.parse('one')
         >>> help = context.help()
-        >>> print '\\n'.join(help.format())
-          ^Bthree^B 3
-          ^Btwo  ^B 2
+        >>> help.format(sys.stdout)
+          three 3
+          two   2
         """
         return HelpParser(self, self.last_node)
 
@@ -262,7 +208,7 @@ class Context(object):
         """How many times has node been traversed in this context?
 
         >>> from cly.builder import Grammar, Node, Alias
-        >>> parser = Parser(Grammar(one=Node(traversals=0)(Alias(target='/one'))))
+        >>> parser = Parser(Grammar(one=Node('1', traversals=0)(Alias('/one'))))
         >>> node = parser.find('/one')
         >>> for i in range(4):
         ...     context = parser.parse('one ' * i)
@@ -274,64 +220,53 @@ class Context(object):
         """
         return self._traversed.get(node.path(), 0)
 
-    def update_locals(self, locals):
-        """Update locals before XML evaluation."""
-        return locals
-
     def __repr__(self):
         return "<Context command:'%s' remaining:'%s'>" % (self.command, self.remaining)
 
 
 class Parser(object):
-    """Parse and execute user input against a :class:`~cly.builder.Grammar`.
-
-    For each parse, the parser creates a :class:`Context` containing the state
-    for the run and parses the input, and executes any callbacks.
-
-    After parsing, the returned :class:`Context` can be interrogated for
-    information or used to execute any :class:`~cly.builder.Action`\ s.
-
-    Arguments:
-        :grammar: Grammar to parse with.
-        :data: User data to attach to Context.
-        :context_factory: A callable used to create new :class:`Context`
-                          objects.
-    """
-    def __init__(self, grammar, data=None, context_factory=Context):
-        """Construct a new Parser."""
+    """Parse and execute CLY grammars."""
+    def __init__(self, grammar, with_user_context=False):
         self.grammar = grammar
-        self.data = data
-        self.labels = self._collect_labels()
-        self.context_factory = context_factory
+        self.with_user_context = with_user_context
 
     def _set_grammar(self, grammar):
-        """Set grammar to parse with."""
+        """Set grammar and update all nodes' ``parser`` attribute."""
         from cly.builder import Grammar
         assert isinstance(grammar, Grammar)
         self._grammar = grammar
+        for node in self:
+            node.parser = self
 
     def _get_grammar(self):
-        """The :class:`~cly.builder.Grammar` associated with this parser."""
+        """The grammar associated with this parser."""
         return self._grammar
 
     grammar = property(_get_grammar, _set_grammar)
 
-    def parse(self, command, data=None):
-        """Parse command using the current :class:`~cly.builder.Grammar`.
+    def __iter__(self):
+        """Walk every node in the grammar.
 
-        This will return a :class:`Context` object that can be used to inspect
-        the state of the parser.
+        >>> from cly.builder import Node, Grammar
+        >>> parser = Parser(Grammar(one=Node('1'), two=Node('2', three=Node('3'))))
+        >>> list(parser)
+        [<Grammar:/>, <Node:/two>, <Node:/two/three>, <Node:/one>]
+        """
+        for node in self.grammar.walk():
+            yield node
 
-        Arguments:
-            :command: String to parse.
-            :data: Used to pass user data through to callbacks. The
-                   :class:`Context` object has this as an attribute , available
-                   to any :class:`~cly.builder.Action` node callbacks that have
-                   set ``with_context=True``.
+    def parse(self, command, user_context=None):
+        """Parse command using the current grammar.
 
-        >>> from cly import *
-        >>> parser = Parser(Grammar(one=Node(), two=Node(three=Node(
-        ...                 action=Action(callback=lambda: "foo bar")))))
+        This will return a Context object that can be used to inspect the state
+        of the parser.
+
+        If a user_context is provided it will be passed on to any ``Action``
+        node callbacks that have set ``with_context=True``.
+
+        >>> from cly.builder import Grammar, Node, Action
+        >>> parser = Parser(Grammar(one=Node('1'), two=Node('2', three=Node('3',
+        ...                 action=Action('Do stuff', lambda: "foo bar")))))
         >>> context = parser.parse('two three')
         >>> context
         <Context command:'two three' remaining:''>
@@ -340,9 +275,7 @@ class Parser(object):
         >>> parser.parse('two four')
         <Context command:'two four' remaining:'four'>
         """
-        if data is None:
-            data = self.data
-        context = self.context_factory(self, command, data)
+        context = Context(self, command, user_context)
 
         def parse(node, match):
             context.trail.append((node, match))
@@ -362,55 +295,26 @@ class Parser(object):
         parse(self.grammar, None)
         return context
 
-    def merge(self, grammar, where=None):
-        """Merge another grammar into this one.
-
-        Arguments:
-            :where: A label or path to a node.
-            :grammar: Grammar to merge.
-        """
-        if where is None:
-            assert hasattr(grammar, 'graft'), \
-                'need either an explicit "where" or a "graft" attribute on ' \
-                'the <grammar> root'
-            where = grammar.graft
-        where = self.find(where)
-        where.update(grammar)
-        self.labels.update(self._collect_labels())
-
-    def execute(self, command, data=None):
+    def execute(self, command, user_context=None):
         """Parse and execute the given command.
 
-        This is a convenience function that calls :meth:`~Context.execute` on
-        the :class:`Context` object returned by :meth:`parse`.
-
-        Arguments are the same as for :meth:`parse`.
-
         >>> from cly.builder import Grammar, Node, Action
-        >>> parser = Parser(Grammar(one=Node(), two=Node(three=Node(
-        ...                 action=Action(callback=lambda: "foo bar")))))
+        >>> parser = Parser(Grammar(one=Node('1'), two=Node('2', three=Node('3',
+        ...                 action=Action('Do stuff', lambda: "foo bar")))))
         >>> parser.execute('two three')
         'foo bar'
         """
-        return self.parse(command, data).execute()
+        return self.parse(command, user_context).execute()
 
     def find(self, path):
         """Find a node by its absolute path.
 
         >>> from cly.builder import Grammar, Node, Action
-        >>> parser = Parser(Grammar(one=Node(), two=Node(three=Node())))
+        >>> parser = Parser(Grammar(one=Node('1'), two=Node('2', three=Node('3'))))
         >>> parser.find('/two/three')
         <Node:/two/three>
         """
         return self.grammar.find(path)
-
-    def _collect_labels(self):
-        """Collect labels from grammar."""
-        labels = {}
-        for node in self.grammar.walk():
-            if node.label is not None:
-                labels[node.label] = node
-        return labels
 
 
 if __name__ == '__main__':

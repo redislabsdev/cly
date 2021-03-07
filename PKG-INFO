@@ -1,0 +1,19 @@
+Metadata-Version: 1.0
+Name: cly
+Version: 0.9
+Summary: A module for adding powerful text-based consoles to your application.
+Home-page: http://swapoff.org/cly
+Author: Alec Thomas
+Author-email: alec@swapoff.org
+License: BSD
+Download-URL: http://swapoff.org/cly
+Description: CLY is a Python module for simplifying the creation of interactive shells.
+        Kind of like the builtin "cmd" module on steroids.
+Platform: any
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: System :: Shells
+Classifier: Environment :: Console
+Classifier: Topic :: Software Development :: Libraries
