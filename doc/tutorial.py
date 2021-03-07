@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 from cly import *
@@ -8,7 +9,7 @@ def do_quit():
 
 def do_cat(files):
     for file in files:
-        print open(os.path.expanduser(file)).read()
+        print(open(os.path.expanduser(file)).read())
 
 grammar = Grammar(
     # Quit is distinct from normal commands, so lets reflect that with a visual

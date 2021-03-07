@@ -619,7 +619,7 @@ class Variable(Node):
         """
         try:
             value = self.parse(context, match)
-        except ValidationError, e:
+        except ValidationError as e:
             raise ValidationError(context, token=match.group(),
                                   exception=unicode(e))
         if not self.traversals or self.traversals > 1:
@@ -664,7 +664,7 @@ class Grammar(Node):
         """
         try:
             dom = minidom.parseString(xml)
-        except Exception, e:
+        except Exception as e:
             raise XMLParseError(str(e))
 
         extra_nodes = extra_nodes or []

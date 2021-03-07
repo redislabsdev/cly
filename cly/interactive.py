@@ -16,6 +16,7 @@ customisable completion key, interactive help and more.
 
 Press ``?`` at any location to contextual help.
 """
+from __future__ import print_function
 
 import os
 import sys
@@ -134,16 +135,16 @@ class Interact(object):
             try:
                 command = raw_input(self.prompt)
             except KeyboardInterrupt:
-                print
+                print()
                 continue
             except EOFError:
-                print
+                print()
                 return None
 
             try:
                 context = Interact._parser.parse(command, user_context=self.user_context)
                 context.execute()
-            except ParseError, e:
+            except ParseError as e:
                 self.print_error(context, e)
             return context
 
@@ -165,7 +166,7 @@ class Interact(object):
                 try:
                     if not self.once():
                         break
-                except Exception, e:
+                except Exception as e:
                     if inhibit_exceptions:
                         if with_backtrace:
                             import traceback
@@ -213,8 +214,8 @@ class Interact(object):
         from StringIO import StringIO
         out = StringIO()
         traceback.print_exc(file=out)
-        print >>sys.stderr, str(exception)
-        print >>sys.stderr, out.getvalue()
+        print(str(exception), file=sys.stderr)
+        print(out.getvalue(), file=sys.stderr)
 
 
     @staticmethod
@@ -236,7 +237,7 @@ class Interact(object):
             return None
         except cly.Error:
             return None
-        except Exception, e:
+        except Exception as e:
             Interact._dump_traceback(e)
             cly.rlext.force_redisplay()
             raise
@@ -248,7 +249,7 @@ class Interact(object):
             command = readline.get_line_buffer()[:cly.rlext.cursor()]
             context = Interact._parser.parse(command)
             if context.remaining.strip():
-                print
+                print()
                 candidates = [help[1] for help in context.help()]
                 text = '%s^ invalid token (candidates are %s)' % \
                        (' ' * (context.cursor + len(Interact.prompt)),
@@ -257,11 +258,11 @@ class Interact(object):
                 cly.rlext.force_redisplay()
                 return
             help = context.help()
-            print
+            print()
             help.format(sys.stdout)
             cly.rlext.force_redisplay()
             return 0
-        except Exception, e:
+        except Exception as e:
             Interact._dump_traceback(e)
             cly.rlext.force_redisplay()
             return 0

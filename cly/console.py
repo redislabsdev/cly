@@ -433,7 +433,7 @@ def print_table(header, table, sep=' ', indent='',
 
     # Make sure min_widths is sensible
     if sum(min_widths) > max_width:
-        raise Exception, 'Table exceeds maximum width'
+        raise Exception('Table exceeds maximum width')
 
     # Scale columns out to max_width
     if expand_to_fit is True or max_width < sum(colwidths):
