@@ -5,7 +5,7 @@
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution.
  *
- *
+ * vim: ts=4 sts=4 sw=4 et
 */
 #include "Python.h"
 #include <readline/readline.h>
@@ -36,7 +36,7 @@ bind_key_handler(int count, int key)
     PyObject *result;
 
     PyEval_RestoreThread(bind_key_map[key].tstate);
-    args = Py_BuildValue("(ii)", count, key);
+    args = Py_BuildValue((char*)"(ii)", count, key);
     result = PyEval_CallObject(bind_key_map[key].callback, args);
     if (result == NULL) {
         PyErr_Clear();
@@ -56,7 +56,7 @@ bind_key(PyObject *self, PyObject *args)
     PyObject *result = NULL;
     PyObject *callback;
 
-    if (PyArg_ParseTuple(args, "iO:bind_key", &key, &callback)) {
+    if (PyArg_ParseTuple(args, (char*)"iO:bind_key", &key, &callback)) {
         if (!PyCallable_Check(callback)) {
             PyErr_SetString(PyExc_TypeError, "bind_key requires callable as second argument");
             return NULL;
@@ -83,13 +83,17 @@ representing the count for that key.");
 static PyObject *
 cursor(PyObject *self, PyObject *args)
 {
-    if (!PyArg_ParseTuple(args, "|i:set_cursor", &rl_point))
+    if (!PyArg_ParseTuple(args, (char*)"|i:set_cursor", &rl_point))
         return NULL;
     if (rl_point > rl_end)
         rl_point = rl_end;
     if (rl_point < 0)
         rl_point = 0;
+#if PY_MAJOR_VERSION >= 3
+    return PyLong_FromLong(rl_point);
+#else
     return PyInt_FromLong(rl_point);
+#endif
 }
 
 PyDoc_STRVAR(doc_cursor,
@@ -97,14 +101,41 @@ PyDoc_STRVAR(doc_cursor,
 Set or get the cursor location.");
 
 static struct PyMethodDef methods[] = {
-	{"bind_key", bind_key, METH_VARARGS, doc_bind_key},
-	{"force_redisplay", force_redisplay, METH_NOARGS, doc_force_redisplay},
-	{"cursor", cursor, METH_VARARGS, doc_cursor},
+    {(char*)"bind_key", bind_key, METH_VARARGS, doc_bind_key},
+    {(char*)"force_redisplay", force_redisplay, METH_NOARGS, doc_force_redisplay},
+    {(char*)"cursor", cursor, METH_VARARGS, doc_cursor},
 	{NULL, NULL, 0, NULL},
 };
 
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "_rlext",                   /* m_name */
+    "cly readline extension",   /* m_doc */
+    -1,                         /* m_size */
+    methods,                    /* m_methods */
+    NULL,                       /* m_reload */
+    NULL,                       /* m_traverse */
+    NULL,                       /* m_clear */
+    NULL,                       /* m_free */
+};
+#endif
+
 PyMODINIT_FUNC
-initrlext(void)
+#if PY_MAJOR_VERSION >= 3
+PyInit__rlext(void)
+#else
+init_rlext(void)
+#endif
 {
-	Py_InitModule("rlext", methods);
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+
+    if (module == NULL)
+        return NULL;
+
+    return module;
+#else
+    Py_InitModule((char *)"_rlext", methods);
+#endif
 }

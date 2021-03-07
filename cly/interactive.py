@@ -25,12 +25,23 @@ from builtins import input
 from builtins import object
 import os
 import sys
-import readline
-import cly.rlext
 import cly.console as console
 from cly.exceptions import Error, ParseError
 from cly.builder import Grammar
 from cly.parser import Parser
+
+try:
+    import readline
+except ImportError:
+    readline = None
+try:
+    from cly import _rlext
+except ImportError:
+    _rlext = None
+    try:
+        import pyreadline
+    except ImportError:
+        pyreadline = None
 
 
 __all__ = ['Interact', 'interact']
@@ -126,7 +137,7 @@ class Interact(object):
         readline.set_startup_hook(Interact._cli_injector)
 
         # Use custom readline extensions
-        cly.rlext.bind_key(ord(help_key), Interact._cli_help)
+        _rlext.bind_key(ord(help_key), Interact._cli_help)
 
 
     def once(self, default_text='', callback=None):
@@ -244,14 +255,14 @@ class Interact(object):
             return None
         except Exception as e:
             Interact._dump_traceback(e)
-            cly.rlext.force_redisplay()
+            _rlext.force_redisplay()
             raise
 
 
     @staticmethod
     def _cli_help(key, count):
         try:
-            command = readline.get_line_buffer()[:cly.rlext.cursor()]
+            command = readline.get_line_buffer()[:_rlext.cursor()]
             context = Interact._parser.parse(command)
             if context.remaining.strip():
                 print()
@@ -260,16 +271,16 @@ class Interact(object):
                        (' ' * (context.cursor + len(Interact.prompt)),
                         ', '.join(candidates))
                 console.cerror(text)
-                cly.rlext.force_redisplay()
+                _rlext.force_redisplay()
                 return
             help = context.help()
             print()
             help.format(sys.stdout)
-            cly.rlext.force_redisplay()
+            _rlext.force_redisplay()
             return 0
         except Exception as e:
             Interact._dump_traceback(e)
-            cly.rlext.force_redisplay()
+            _rlext.force_redisplay()
             return 0
 
 
