@@ -1,6 +1,7 @@
-.todo
 COPYING
+MANIFEST.in
 README
+setup.cfg
 setup.py
 cly/__init__.py
 cly/builder.py
@@ -15,7 +16,6 @@ cly/test.py
 cly.egg-info/PKG-INFO
 cly.egg-info/SOURCES.txt
 cly.egg-info/dependency_links.txt
-cly.egg-info/native_libs.txt
 cly.egg-info/not-zip-safe
 cly.egg-info/top_level.txt
 doc/Makefile

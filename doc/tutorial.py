@@ -1,7 +1,6 @@
 import os
 import sys
 from cly import *
-from cly.variables import File
 from cly.interactive import Interact
 
 def do_quit():
@@ -33,4 +32,4 @@ grammar = Grammar(
 )
 
 interact = Interact(grammar)
-interact.interact_loop()
+interact.loop()
