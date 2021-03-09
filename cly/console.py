@@ -42,13 +42,17 @@ from __future__ import division
 from builtins import str
 from builtins import map
 from builtins import range
-from io import IOBase
 
 from past.utils import old_div
 import re
 import sys
 import os
 import codecs
+
+
+if sys.version_info[0] == 3:
+    from io import IOBase
+    file = IOBase
 
 
 __docformat__ = 'restructuredtext en'
@@ -97,7 +101,7 @@ if sys.stdout.isatty():
 class Codec(codecs.Codec):
     def __init__(self, *args, **kwargs):
         try:
-            codecs.Codec.__init__(self, *args, **kwargs)
+            codecs.Codec.__init__(self)
         except AttributeError:
             pass
         self.reset()
@@ -241,7 +245,7 @@ If ``sys.stdout`` is not a TTY, colour codes will be stripped.
 def cprint(*args):
     """Emulate the ``print`` builtin, with terminal shortcuts."""
     stream = sys.stdout
-    if args and isinstance(args[0], IOBase):
+    if args and isinstance(args[0], file):
         stream = args[0]
         args = args[1:]
     cwrite(stream, ' '.join(args) + '\n')
