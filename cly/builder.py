@@ -825,7 +825,7 @@ class String(Variable):
     pattern = r"""(\w+)|"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'"""
 
     def parse(self, context, match):
-        return match.group(match.lastindex).decode('string_escape')
+        return match.group(match.lastindex).encode('utf-8').decode('unicode_escape')
 
 
 
