@@ -44,7 +44,7 @@ setup(
     download_url='http://swapoff.org/cly',
     author='Alec Thomas',
     author_email='alec@swapoff.org',
-    version='0.9.2',
+    version='0.10',
     description='A module for adding powerful text-based consoles to your application.',
     long_description=\
 """CLY is a Python module for simplifying the creation of interactive shells.
