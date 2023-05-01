@@ -95,7 +95,7 @@ class TestXMLGrammar(unittest.TestCase):
 
 
         class ABC(Variable):
-            pattern = r'(?i)[abc]+'
+            pattern = r'[abc]+'
 
 
         xml = """<?xml version="1.0"?>

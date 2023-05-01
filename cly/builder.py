@@ -99,11 +99,11 @@ class Node(object):
         if 'separator' in kwargs:
             self.separator = kwargs.pop('separator')
         if self.pattern is not None:
-            self._pattern = re.compile(self.pattern)
+            self._pattern = re.compile(self.pattern, re.IGNORECASE)
         self._separator = re.compile(self.separator)
         if self.pattern is not None and self.separator is not None:
             self._full_match = re.compile('(?:%s)(?:%s)' %
-                                          (self.pattern, self.separator))
+                                          (self.pattern, self.separator), re.IGNORECASE)
         self.name = kwargs.pop('name', None)
         self.parent = None
         self.__anonymous_children = 0
@@ -119,7 +119,7 @@ class Node(object):
             self._pattern = re.compile(name)
         if self.pattern is not None and self.separator is not None:
             self._full_match = re.compile('(?:%s)(?:%s)' %
-                                          (self.pattern, self.separator))
+                                          (self.pattern, self.separator), re.IGNORECASE)
     name = property(lambda self: self._name, _set_name)
 
     def __call__(self, *anonymous, **options):
@@ -805,7 +805,7 @@ class Word(Variable):
     >>> parser.parse('123').remaining
     '123'
     """
-    pattern = r'(?i)[A-Z_]\w+'
+    pattern = r'[A-Z_]\w+'
 
 
 class String(Variable):
@@ -885,7 +885,7 @@ class Boolean(Variable):
     TRUE = 'true yes aye enable enabled on 1'.split()
     FALSE = 'false no disable disabled off 0'.split()
 
-    pattern = r'(?i)(%s)' % '|'.join(TRUE + FALSE)
+    pattern = r'(%s)' % '|'.join(TRUE + FALSE)
 
     def parse(self, context, match):
         boolean = match.group()
@@ -935,7 +935,7 @@ class Hostname(Variable):
     >>> parser.parse('www.example.com').vars['foo']
     ('www', 'example', 'com')
     """
-    pattern = r'(?i)([A-Z0-9][A-Z0-9_-]*)(?:\.([A-Z0-9][A-Z0-9_-]*))*'
+    pattern = r'([A-Z0-9][A-Z0-9_-]*)(?:\.([A-Z0-9][A-Z0-9_-]*))*'
 
     def parse(self, context, match):
         return tuple(match.group().split('.'))
@@ -954,7 +954,7 @@ class Host(Variable):
     (123, 34, 67, 89)
     """
 
-    pattern = r'(?i)(%s)|(%s)' % (IP.pattern, Hostname.pattern)
+    pattern = r'(%s)|(%s)' % (IP.pattern, Hostname.pattern)
 
     def parse(self, context, match):
         components = match.string[match.start():match.end()].split('.')
@@ -971,7 +971,7 @@ class EMail(Variable):
     >>> parser.parse('foo@bar.com').vars['foo']
     'foo@bar.com'
     """
-    pattern = r'(?i)[A-Z0-9._%-]+@[A-Z0-9.-]+\.[A-Z]{2,4}'
+    pattern = r'[A-Z0-9._%-]+@[A-Z0-9.-]+\.[A-Z]{2,4}'
 
 
 class File(Variable):
