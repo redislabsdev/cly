@@ -10,10 +10,6 @@
 """Classes for constructing CLY grammars."""
 
 
-from builtins import map
-from builtins import str
-from past.builtins import basestring
-from builtins import object
 import re
 import os
 import posixpath
@@ -92,7 +88,7 @@ class Node(object):
 
     def __init__(self, help='', *args, **kwargs):
         self._children = {}
-        if isinstance(help, basestring):
+        if isinstance(help, (str, bytes)):
             self.help = LazyHelp(self, help)
         elif callable(help):
             self.help = help
@@ -118,7 +114,7 @@ class Node(object):
         matching pattern associated with it, a pattern will be created using
         the name."""
         self._name = name
-        if isinstance(name, basestring) and self.pattern is None:
+        if isinstance(name, (str, bytes)) and self.pattern is None:
             self.pattern = name
             self._pattern = re.compile(name)
         if self.pattern is not None and self.separator is not None:
@@ -539,7 +535,7 @@ class Action(Node):
     with_user_context = None
 
     def __init__(self, help='', callback=None, *args, **kwargs):
-        if isinstance(help, basestring):
+        if isinstance(help, (str, bytes)):
             help_string = help
             help = lambda ctx: (('<eol>', help_string),)
         Node.__init__(self, help, callback=callback, *args, **kwargs)
@@ -552,7 +548,7 @@ class Action(Node):
         """
         if not self.visible(context):
             return
-        if isinstance(self.doc, basestring):
+        if isinstance(self.doc, (str, bytes)):
             yield ('<eol>', self.doc)
         else:
             yield self.doc

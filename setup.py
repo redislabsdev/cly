@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 try:
     from setuptools import setup, Extension
 except ImportError:
@@ -31,13 +29,11 @@ WARNING: Could not compile C extension, contextual help will not be available.
         print('*' * 78)
 
 
-install_requires = ['future==0.18.2']
+install_requires = []
 
 if sys.platform.startswith('win'):
     ext_modules = []
     install_requires.append('pyreadline')
-    if sys.version_info[:2] < (2, 5):
-        install_requires.append('ctypes')
 else:
     ext_modules = [Extension('cly._rlext', ['cly/_rlext.c'],
                              libraries=['readline', 'curses'])]

@@ -37,12 +37,6 @@ Valid formatting controls are:
     Set white foreground.
 
 """
-from __future__ import division
-
-from builtins import str
-from builtins import map
-from builtins import range
-
 from past.utils import old_div
 import re
 import sys

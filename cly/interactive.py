@@ -16,13 +16,6 @@ customisable completion key, interactive help and more.
 
 Press ``?`` at any location to contextual help.
 """
-from __future__ import print_function
-
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import input
-from builtins import object
 import os
 import sys
 import cly.console as console
