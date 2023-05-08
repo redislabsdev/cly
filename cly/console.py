@@ -37,7 +37,6 @@ Valid formatting controls are:
     Set white foreground.
 
 """
-from past.utils import old_div
 import re
 import sys
 import os
@@ -373,7 +372,7 @@ def cjustify(text, width=termwidth()):
     text = cwraptext(text, width)
     out = ''
     for line in text:
-        out += (' ' * (old_div((width - clen(line)), 2))) + line + '\n'
+        out += (' ' * ((width - clen(line)) // 2)) + line + '\n'
     return out.rstrip()
 
 

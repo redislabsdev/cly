@@ -16,6 +16,7 @@ customisable completion key, interactive help and more.
 
 Press ``?`` at any location to contextual help.
 """
+from past.utils import old_div
 import os
 import sys
 import cly.console as console
