@@ -34,8 +34,9 @@ It has the following features:
 __docformat__ = 'restructuredtext en'
 __author__ = 'Alec Thomas <alec@swapoff.org>'
 try:
-    __version__ = __import__('pkg_resources').get_distribution('cly').version
-except ImportError:
+    import importlib.metadata
+    __version__ = importlib.metadata.version('cly')
+except Exception:
     pass
 
 
