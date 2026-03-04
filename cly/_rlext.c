@@ -37,7 +37,7 @@ bind_key_handler(int count, int key)
 
     PyEval_RestoreThread(bind_key_map[key].tstate);
     args = Py_BuildValue((char*)"(ii)", count, key);
-    result = PyEval_CallObject(bind_key_map[key].callback, args);
+    result = PyObject_CallObject(bind_key_map[key].callback, args);
     if (result == NULL) {
         PyErr_Clear();
         Py_XDECREF(result);
